@@ -12,6 +12,7 @@
 
 using namespace std::chrono_literals;
 using namespace slam_toolbox;
+using namespace std;
 
 int main(int argc, char **argv)
 {
@@ -90,7 +91,12 @@ int main(int argc, char **argv)
   long moh = sod%3600;
   int mm = moh/60;
   int ss = moh%60;
-  save_map_request->map_url = "AutoExploreMap_"+std::to_string(hh)+std::to_string(mm)+std::to_string(ss);
+  string hh_str = hh > 10 ? to_string(hh) : '0' + to_string(hh);
+  string mm_str = mm > 10 ? to_string(mm) : '0' + to_string(mm);
+  string ss_str = ss > 10 ? to_string(ss) : '0' + to_string(ss);
+  save_map_request->map_url = "package://map_server_extension/maps/map_" + hh_str + mm_str + ss_str;
+
+  
   auto map_saver_result = map_saver_client->async_send_request(save_map_request);
 
   // Wait for the result.
