@@ -38,5 +38,9 @@ ament_target_dependencies(map_saver_client
 install(TARGETS map_saver_client
     DESTINATION lib/${PROJECT_NAME}
 )
+install(
+        DIRECTORY  maps
+        DESTINATION share/${PROJECT_NAME}
+)
 
 ament_package()

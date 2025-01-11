@@ -9,6 +9,7 @@
 #include "slam_toolbox/srv/serialize_pose_graph.hpp"
 #include <slam_toolbox/srv/detail/save_map__struct.hpp>
 #include "nav2_msgs/srv/save_map.hpp"
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 using namespace std::chrono_literals;
 using namespace slam_toolbox;
@@ -94,7 +95,8 @@ int main(int argc, char **argv)
   string hh_str = hh > 10 ? to_string(hh) : '0' + to_string(hh);
   string mm_str = mm > 10 ? to_string(mm) : '0' + to_string(mm);
   string ss_str = ss > 10 ? to_string(ss) : '0' + to_string(ss);
-  save_map_request->map_url = "package://map_server_extension/maps/map_" + hh_str + mm_str + ss_str;
+  string package_share_directory = ament_index_cpp::get_package_share_directory("map_server_extension");
+  save_map_request->map_url = package_share_directory + "/maps/map_" + hh_str + mm_str + ss_str;
 
   
   auto map_saver_result = map_saver_client->async_send_request(save_map_request);
