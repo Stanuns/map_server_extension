@@ -13,6 +13,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(nav2_msgs REQUIRED)
 find_package(robot_interfaces REQUIRED)
 find_package(slam_toolbox REQUIRED)
+find_package(std_srvs REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -35,7 +36,18 @@ ament_target_dependencies(map_saver_client
   nav2_msgs
   slam_toolbox
 )
-install(TARGETS map_saver_client
+add_executable(map_mgmt_server src/map_mgmt_server.cpp)
+ament_target_dependencies(map_mgmt_server
+  robot_interfaces
+  rclcpp
+  rclcpp_action
+  rclcpp_components
+  nav2_msgs
+  std_srvs
+)
+
+
+install(TARGETS map_saver_client map_mgmt_server
     DESTINATION lib/${PROJECT_NAME}
 )
 install(
