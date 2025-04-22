@@ -46,8 +46,18 @@ ament_target_dependencies(map_mgmt_server
   std_srvs
 )
 
+add_executable(get_map_file_client_test src/get_map_file_client_test.cpp)
+ament_target_dependencies(get_map_file_client_test
+  robot_interfaces
+  rclcpp
+  rclcpp_action
+  rclcpp_components
+  nav2_msgs
+  std_srvs
+)
 
-install(TARGETS map_saver_client map_mgmt_server
+
+install(TARGETS map_saver_client map_mgmt_server get_map_file_client_test
     DESTINATION lib/${PROJECT_NAME}
 )
 install(

@@ -4,9 +4,11 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <fstream>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include "robot_interfaces/srv/get_maps_name_list.hpp"
 #include "robot_interfaces/srv/remove_map_file.hpp"
+#include "robot_interfaces/srv/get_map_file.hpp"
 
 /***
  * 1.获取当前maps目录下各个map name列表
@@ -27,6 +29,10 @@ public:
         service_rmf_ = this->create_service<robot_interfaces::srv::RemoveMapFile>(
             "remove_map_file",
             std::bind(&MapMgmtServer::handle_request_rmf, this, std::placeholders::_1, std::placeholders::_2));
+        
+        service_gmf_ = this->create_service<robot_interfaces::srv::GetMapFile>(
+            "get_map_file",
+            std::bind(&MapMgmtServer::handle_request_gmf, this, std::placeholders::_1, std::placeholders::_2));
 
         RCLCPP_INFO(this->get_logger(), "Service is ready to map management.");
     }
@@ -110,9 +116,44 @@ private:
         response->message = "Successfully deleted map files: " + map_name + ".pgm and " + map_name + ".yaml";
     }
 
+    void handle_request_gmf(
+        const std::shared_ptr<robot_interfaces::srv::GetMapFile::Request> request,
+        std::shared_ptr<robot_interfaces::srv::GetMapFile::Response> response) {
+
+        std::string map_name = request->map_name;
+        // Read YAML file
+        std::string yaml_path = maps_dir + map_name + ".yaml";
+        if (!readFile(yaml_path, response->yaml_content)) {
+            response->result = false;
+            response->message = "Failed to read YAML file: " + yaml_path;
+            return;
+        }
+        // Read PGM file
+        std::string pgm_path = maps_dir + map_name + ".pgm";
+        if (!readFile(pgm_path, response->pgm_content)) {
+            response->result = false;
+            response->message = "Failed to read PGM file: " + pgm_path;
+            return;
+        }
+        response->result = true;
+        response->message = "Successfully retrieved map files: " + map_name;          
+    }
+
+    bool readFile(const std::string& path, std::vector<uint8_t>& content) {
+        std::ifstream file(path, std::ios::binary);
+        if (!file) return false;
+
+        file.seekg(0, std::ios::end);
+        content.resize(file.tellg());
+        file.seekg(0, std::ios::beg);
+        file.read(reinterpret_cast<char*>(content.data()), content.size());
+        return !file.fail();
+    }
+
     // rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr service_;
     rclcpp::Service<robot_interfaces::srv::GetMapsNameList>::SharedPtr service_gmnl_;
     rclcpp::Service<robot_interfaces::srv::RemoveMapFile>::SharedPtr service_rmf_;
+    rclcpp::Service<robot_interfaces::srv::GetMapFile>::SharedPtr service_gmf_;
     std::string maps_dir;
 };
 
