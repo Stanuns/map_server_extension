@@ -5,15 +5,19 @@
 #include <string>
 #include <set>
 #include <fstream>
+#include <filesystem>
+#include <stdexcept>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include "robot_interfaces/srv/get_maps_name_list.hpp"
 #include "robot_interfaces/srv/remove_map_file.hpp"
 #include "robot_interfaces/srv/get_map_file.hpp"
+#include "robot_interfaces/srv/load_map_file.hpp"
 
 /***
  * 1.获取当前maps目录下各个map name列表
  * 2.传入地图名称，获取地图文件pgm、yaml文件
- * 3.删除地图
+ * 3.下发(载入)地图文件
+ * 4.删除地图
  */
 using namespace std;
 class MapMgmtServer : public rclcpp::Node {
@@ -33,6 +37,10 @@ public:
         service_gmf_ = this->create_service<robot_interfaces::srv::GetMapFile>(
             "get_map_file",
             std::bind(&MapMgmtServer::handle_request_gmf, this, std::placeholders::_1, std::placeholders::_2));
+        
+        service_lmf_ = this->create_service<robot_interfaces::srv::LoadMapFile>(
+            "load_map_file",
+            std::bind(&MapMgmtServer::handle_request_lmf, this, std::placeholders::_1, std::placeholders::_2));
 
         RCLCPP_INFO(this->get_logger(), "Service is ready to map management.");
     }
@@ -139,6 +147,48 @@ private:
         response->message = "Successfully retrieved map files: " + map_name;          
     }
 
+    void handle_request_lmf(
+        const std::shared_ptr<robot_interfaces::srv::LoadMapFile::Request> request,
+        std::shared_ptr<robot_interfaces::srv::LoadMapFile::Response> response) {
+                  
+        std::string yaml_path = maps_dir + request->map_name + ".yaml";
+        std::string pgm_path = maps_dir + request->map_name + ".pgm";
+        try {
+            // Save YAML file
+            std::ofstream yaml_file(yaml_path, std::ios::binary);
+            if (!yaml_file.is_open()) {
+                throw std::runtime_error("Failed to open YAML file for writing");
+            }
+            yaml_file.write(reinterpret_cast<const char*>(request->yaml_content.data()), 
+                          request->yaml_content.size());
+            yaml_file.close();
+
+            // Save PGM file
+            std::ofstream pgm_file(pgm_path, std::ios::binary);
+            if (!pgm_file.is_open()) {
+                throw std::runtime_error("Failed to open PGM file for writing");
+            }
+            pgm_file.write(reinterpret_cast<const char*>(request->pgm_content.data()), 
+                         request->pgm_content.size());
+            pgm_file.close();
+
+            // Set success response
+            response->result = true;
+            response->err_code = "";
+            response->err_msg = "Files saved successfully";
+        } catch (const std::exception& e) {
+            // Set error response
+            response->result = false;
+            response->err_code = "FILE_SAVE_ERROR";
+            response->err_msg = e.what();
+            
+            // Clean up partially written files if any
+            filesystem::remove(yaml_path);
+            filesystem::remove(pgm_path);
+        }
+    
+    }
+
     bool readFile(const std::string& path, std::vector<uint8_t>& content) {
         std::ifstream file(path, std::ios::binary);
         if (!file) return false;
@@ -154,6 +204,7 @@ private:
     rclcpp::Service<robot_interfaces::srv::GetMapsNameList>::SharedPtr service_gmnl_;
     rclcpp::Service<robot_interfaces::srv::RemoveMapFile>::SharedPtr service_rmf_;
     rclcpp::Service<robot_interfaces::srv::GetMapFile>::SharedPtr service_gmf_;
+    rclcpp::Service<robot_interfaces::srv::LoadMapFile>::SharedPtr service_lmf_;
     std::string maps_dir;
 };
 
