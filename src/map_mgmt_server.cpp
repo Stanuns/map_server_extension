@@ -11,7 +11,7 @@
 #include "robot_interfaces/srv/get_maps_name_list.hpp"
 #include "robot_interfaces/srv/remove_map_file.hpp"
 #include "robot_interfaces/srv/get_map_file.hpp"
-#include "robot_interfaces/srv/load_map_file.hpp"
+#include "robot_interfaces/srv/update_map_file.hpp"
 
 /***
  * 1.获取当前maps目录下各个map name列表
@@ -38,9 +38,9 @@ public:
             "get_map_file",
             std::bind(&MapMgmtServer::handle_request_gmf, this, std::placeholders::_1, std::placeholders::_2));
         
-        service_lmf_ = this->create_service<robot_interfaces::srv::LoadMapFile>(
-            "load_map_file",
-            std::bind(&MapMgmtServer::handle_request_lmf, this, std::placeholders::_1, std::placeholders::_2));
+        service_umf_ = this->create_service<robot_interfaces::srv::UpdateMapFile>(
+            "update_map_file",
+            std::bind(&MapMgmtServer::handle_request_umf, this, std::placeholders::_1, std::placeholders::_2));
 
         RCLCPP_INFO(this->get_logger(), "Service is ready to map management.");
     }
@@ -147,9 +147,9 @@ private:
         response->message = "Successfully retrieved map files: " + map_name;          
     }
 
-    void handle_request_lmf(
-        const std::shared_ptr<robot_interfaces::srv::LoadMapFile::Request> request,
-        std::shared_ptr<robot_interfaces::srv::LoadMapFile::Response> response) {
+    void handle_request_umf(
+        const std::shared_ptr<robot_interfaces::srv::UpdateMapFile::Request> request,
+        std::shared_ptr<robot_interfaces::srv::UpdateMapFile::Response> response) {
                   
         std::string yaml_path = maps_dir + request->map_name + ".yaml";
         std::string pgm_path = maps_dir + request->map_name + ".pgm";
@@ -204,7 +204,7 @@ private:
     rclcpp::Service<robot_interfaces::srv::GetMapsNameList>::SharedPtr service_gmnl_;
     rclcpp::Service<robot_interfaces::srv::RemoveMapFile>::SharedPtr service_rmf_;
     rclcpp::Service<robot_interfaces::srv::GetMapFile>::SharedPtr service_gmf_;
-    rclcpp::Service<robot_interfaces::srv::LoadMapFile>::SharedPtr service_lmf_;
+    rclcpp::Service<robot_interfaces::srv::UpdateMapFile>::SharedPtr service_umf_;
     std::string maps_dir;
 };
 

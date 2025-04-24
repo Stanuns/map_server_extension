@@ -1,18 +1,18 @@
 #include <fstream>
 #include <memory>
 #include "rclcpp/rclcpp.hpp"
-#include "robot_interfaces/srv/load_map_file.hpp"
+#include "robot_interfaces/srv/update_map_file.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
-class LoadMapFileClientTest : public rclcpp::Node {
+class UpdateMapFileClientTest : public rclcpp::Node {
 public:
-    LoadMapFileClientTest() : Node("load_map_file_client_test") {
-        client_ = this->create_client<robot_interfaces::srv::LoadMapFile>("load_map_file");
+    UpdateMapFileClientTest() : Node("update_map_file_client_test") {
+        client_ = this->create_client<robot_interfaces::srv::UpdateMapFile>("update_map_file");
         read_dir = ament_index_cpp::get_package_share_directory("map_server_extension");
     }
 
     bool readAndSendMap(const std::string& map_name) { //, const std::string& output_dir = "./"
-        auto request = std::make_shared<robot_interfaces::srv::LoadMapFile::Request>();
+        auto request = std::make_shared<robot_interfaces::srv::UpdateMapFile::Request>();
         request->map_name = map_name;
 
         std::string yaml_path = read_dir  + "/" + map_name + ".yaml";
@@ -67,7 +67,7 @@ private:
         return !file.fail();
     }
 
-    rclcpp::Client<robot_interfaces::srv::LoadMapFile>::SharedPtr client_;
+    rclcpp::Client<robot_interfaces::srv::UpdateMapFile>::SharedPtr client_;
     std::string read_dir;
 };
 
@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
     }
 
     rclcpp::init(argc, argv);
-    auto client = std::make_shared<LoadMapFileClientTest>();
+    auto client = std::make_shared<UpdateMapFileClientTest>();
     bool success = client->readAndSendMap(argv[1]);
     rclcpp::shutdown();
     return success ? 0 : 1;
