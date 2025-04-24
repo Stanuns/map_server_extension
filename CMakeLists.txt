@@ -14,6 +14,7 @@ find_package(nav2_msgs REQUIRED)
 find_package(robot_interfaces REQUIRED)
 find_package(slam_toolbox REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -45,6 +46,9 @@ ament_target_dependencies(map_mgmt_server
   nav2_msgs
   std_srvs
 )
+target_link_libraries(map_mgmt_server
+  ${YAML_CPP_LIBRARIES}
+)
 
 add_executable(get_map_file_client_test src/get_map_file_client_test.cpp)
 ament_target_dependencies(get_map_file_client_test
@@ -71,7 +75,7 @@ install(TARGETS map_saver_client map_mgmt_server get_map_file_client_test update
     DESTINATION lib/${PROJECT_NAME}
 )
 install(
-        DIRECTORY  maps
+        DIRECTORY  maps params
         DESTINATION share/${PROJECT_NAME}
 )
 

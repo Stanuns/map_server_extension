@@ -7,11 +7,13 @@
 #include <fstream>
 #include <filesystem>
 #include <stdexcept>
+#include <yaml-cpp/yaml.h>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include "robot_interfaces/srv/get_maps_name_list.hpp"
 #include "robot_interfaces/srv/remove_map_file.hpp"
 #include "robot_interfaces/srv/get_map_file.hpp"
 #include "robot_interfaces/srv/update_map_file.hpp"
+#include "robot_interfaces/srv/set_current_map.hpp"
 
 /***
  * 1.获取当前maps目录下各个map name列表
@@ -25,6 +27,8 @@ public:
     MapMgmtServer() : Node("map_mgmt_server") {
         std::string package_share_directory = ament_index_cpp::get_package_share_directory("map_server_extension");
         maps_dir = package_share_directory + "/maps/";
+        params_dir = package_share_directory + "/params/";
+
 
         service_gmnl_ = this->create_service<robot_interfaces::srv::GetMapsNameList>(
             "get_maps_name_list",
@@ -41,6 +45,10 @@ public:
         service_umf_ = this->create_service<robot_interfaces::srv::UpdateMapFile>(
             "update_map_file",
             std::bind(&MapMgmtServer::handle_request_umf, this, std::placeholders::_1, std::placeholders::_2));
+        
+        service_scm_ = this->create_service<robot_interfaces::srv::SetCurrentMap>(
+            "set_current_map",
+            std::bind(&MapMgmtServer::handle_request_scm, this, std::placeholders::_1, std::placeholders::_2));
 
         RCLCPP_INFO(this->get_logger(), "Service is ready to map management.");
     }
@@ -186,6 +194,31 @@ private:
             filesystem::remove(yaml_path);
             filesystem::remove(pgm_path);
         }
+    }
+
+    void handle_request_scm(
+        const std::shared_ptr<robot_interfaces::srv::SetCurrentMap::Request> request,
+        std::shared_ptr<robot_interfaces::srv::SetCurrentMap::Response> response) {
+                  
+        try {
+            // Load the existing YAML file
+            YAML::Node config = YAML::LoadFile(params_dir + "map_mgmt.yaml");
+            
+            // Update the current_map_name value
+            config["map_mgmt_server"]["ros__parameters"]["current_map_name"] = request->map_name;
+            
+            // Write back to the file
+            std::ofstream fout(params_dir + "map_mgmt.yaml");
+            fout << config;
+            fout.close();
+            
+            response->result = true;
+            response->err_msg = "Successfully set current_map_name to " + request->map_name;
+        } catch (const std::exception& e) {
+            response->result = false;
+            response->err_code = "500";
+            response->err_msg = "Failed to set map_mgmt.yaml: " + std::string(e.what());
+        }
     
     }
 
@@ -205,7 +238,9 @@ private:
     rclcpp::Service<robot_interfaces::srv::RemoveMapFile>::SharedPtr service_rmf_;
     rclcpp::Service<robot_interfaces::srv::GetMapFile>::SharedPtr service_gmf_;
     rclcpp::Service<robot_interfaces::srv::UpdateMapFile>::SharedPtr service_umf_;
+    rclcpp::Service<robot_interfaces::srv::SetCurrentMap>::SharedPtr service_scm_;
     std::string maps_dir;
+    std::string params_dir;
 };
 
 int main(int argc, char **argv) {

@@ -1,0 +1,3 @@
+map_mgmt_server:
+  ros__parameters:
+    current_map_name: luxsharenanjinghall01
