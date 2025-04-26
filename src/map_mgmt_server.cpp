@@ -182,13 +182,13 @@ private:
 
             // Set success response
             response->result = true;
-            response->err_code = "";
+            response->err_code = "200";
             response->err_msg = "Files saved successfully";
         } catch (const std::exception& e) {
             // Set error response
             response->result = false;
-            response->err_code = "FILE_SAVE_ERROR";
-            response->err_msg = e.what();
+            response->err_code = "500";
+            response->err_msg = "Failed to update map file: " + std::string(e.what());
             
             // Clean up partially written files if any
             filesystem::remove(yaml_path);
@@ -213,6 +213,7 @@ private:
             fout.close();
             
             response->result = true;
+            response->err_code = "200";
             response->err_msg = "Successfully set current_map_name to " + request->map_name;
         } catch (const std::exception& e) {
             response->result = false;
