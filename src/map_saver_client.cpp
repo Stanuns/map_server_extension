@@ -6,13 +6,13 @@
 #include <cstdlib>
 #include <memory>
 
-#include "slam_toolbox/srv/serialize_pose_graph.hpp"
-#include <slam_toolbox/srv/detail/save_map__struct.hpp>
+// #include "slam_toolbox/srv/serialize_pose_graph.hpp"
+// #include <slam_toolbox/srv/detail/save_map__struct.hpp>
 #include "nav2_msgs/srv/save_map.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
 using namespace std::chrono_literals;
-using namespace slam_toolbox;
+// using namespace slam_toolbox;
 using namespace std;
 
 int main(int argc, char **argv)

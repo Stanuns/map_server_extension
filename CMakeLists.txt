@@ -13,7 +13,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(nav2_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(robot_interfaces REQUIRED)
-find_package(slam_toolbox REQUIRED)
+# find_package(slam_toolbox REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
@@ -36,7 +36,7 @@ ament_target_dependencies(map_saver_client
   rclcpp_action
   rclcpp_components
   nav2_msgs
-  slam_toolbox
+  # slam_toolbox
 )
 add_executable(map_mgmt_server src/map_mgmt_server.cpp)
 ament_target_dependencies(map_mgmt_server
