@@ -74,6 +74,9 @@ ament_target_dependencies(update_map_file_client_test
   nav2_msgs
   std_srvs
 )
+target_link_libraries(update_map_file_client_test
+  ${YAML_CPP_LIBRARIES}
+)
 
 
 install(TARGETS map_saver_client map_mgmt_server get_map_file_client_test update_map_file_client_test

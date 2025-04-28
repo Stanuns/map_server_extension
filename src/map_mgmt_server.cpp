@@ -56,7 +56,7 @@ private:
             }else if(cmd == 3){//set current map
                 handle_request_scm(request, response);
             }else if(cmd == 4){//update map file
-
+                handle_request_umf(request, response);
             }else if(cmd == 5){//remove map file
                 handle_request_rmf(request, response);
             }else{
@@ -168,7 +168,6 @@ private:
                 response->err_msg = "Failed to open PGM file: " + pgm_path;
                 return;
             }
-
             // Parse PGM header (P5 format)
             std::string magic_number;
             std::getline(pgm_file, magic_number); // Read "P5"
@@ -192,7 +191,6 @@ private:
 
             response->map_data.info.width = width;
             response->map_data.info.height = height;
-
             // Read PGM data into occupancy grid
             response->map_data.data.resize(width * height);
             for (int i = 0; i < width * height; ++i) {
@@ -214,46 +212,28 @@ private:
            
     }
 
-    // void handle_request_umf(
-    //     const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
-    //     std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
+    void handle_request_umf(
+        const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
+        std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
                   
-    //     std::string yaml_path = maps_dir + request->map_name + ".yaml";
-    //     std::string pgm_path = maps_dir + request->map_name + ".pgm";
-    //     try {
-    //         // Save YAML file
-    //         std::ofstream yaml_file(yaml_path, std::ios::binary);
-    //         if (!yaml_file.is_open()) {
-    //             throw std::runtime_error("Failed to open YAML file for writing");
-    //         }
-    //         yaml_file.write(reinterpret_cast<const char*>(request->yaml_content.data()), 
-    //                       request->yaml_content.size());
-    //         yaml_file.close();
+        string map_name = request->map_name;
+        
+        try {
+            // Save PGM file
+            save_pgm(map_name, request->map_data);
+            // Save YAML file
+            save_yaml(map_name, request->map_data);
 
-    //         // Save PGM file
-    //         std::ofstream pgm_file(pgm_path, std::ios::binary);
-    //         if (!pgm_file.is_open()) {
-    //             throw std::runtime_error("Failed to open PGM file for writing");
-    //         }
-    //         pgm_file.write(reinterpret_cast<const char*>(request->pgm_content.data()), 
-    //                      request->pgm_content.size());
-    //         pgm_file.close();
-
-    //         // Set success response
-    //         response->result = true;
-    //         response->err_code = "200";
-    //         response->err_msg = "Map file updated successfully";
-    //     } catch (const std::exception& e) {
-    //         // Set error response
-    //         response->result = false;
-    //         response->err_code = "500";
-    //         response->err_msg = "Failed to update map file: " + std::string(e.what());
-            
-    //         // Clean up partially written files if any
-    //         filesystem::remove(yaml_path);
-    //         filesystem::remove(pgm_path);
-    //     }
-    // }
+            // Set success response
+            response->err_code = 200;
+            response->err_msg = "Map file updated successfully";
+        } catch (const std::exception& e) {
+            // Set error response
+            response->err_code = 500;
+            response->err_msg = "Failed to update map file: " + std::string(e.what());
+        
+        }
+    }
 
     void handle_request_scm( //set current map
         const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
@@ -302,6 +282,68 @@ private:
     rclcpp::Service<robot_interfaces::srv::SaveMap>::SharedPtr service_sm_;
     std::string maps_dir;
     std::string params_dir;
+
+    void save_pgm(const std::string& map_name, const nav_msgs::msg::OccupancyGrid& map_data) {
+        std::string pgm_path = maps_dir + map_name + ".pgm";
+        std::ofstream pgm_file(pgm_path, std::ios::binary);
+        if (!pgm_file) {
+            std::string error_message = "Failed to create PGM file: " + pgm_path;
+            RCLCPP_ERROR(get_logger(), "%s", error_message.c_str());
+            throw std::runtime_error(error_message);
+        }
+
+        // Write PGM header (P5 format)
+        pgm_file << "P5\n" << map_data.info.width << " " << map_data.info.height << "\n255\n";
+
+        // Write pixel data (convert occupancy values to PGM)
+        for (const auto& pixel : map_data.data) {
+            uint8_t pgm_pixel;
+            if (pixel == 100) pgm_pixel = 0;       // Occupied
+            else if (pixel == 0) pgm_pixel = 254;  // Free
+            else pgm_pixel = 205;                  // Unknown (-1)
+            pgm_file.write(reinterpret_cast<const char*>(&pgm_pixel), sizeof(pgm_pixel));
+        }
+        
+        if (!pgm_file.good()) {
+            std::string error_message = "Failed to write PGM data to file: " + pgm_path;
+            RCLCPP_ERROR(get_logger(), "%s", error_message.c_str());
+            throw std::runtime_error(error_message);
+        }
+        
+    }
+
+    void save_yaml(const std::string& map_name, const nav_msgs::msg::OccupancyGrid& map_data) {
+        std::string yaml_path = maps_dir + map_name + ".yaml";
+        YAML::Emitter yaml_emitter;
+
+        try {
+            yaml_emitter << YAML::BeginMap;
+            yaml_emitter << YAML::Key << "image" << YAML::Value << map_name + ".pgm";
+            yaml_emitter << YAML::Key << "mode" << YAML::Value << "trinary";
+            yaml_emitter << YAML::Key << "resolution" << YAML::Value << map_data.info.resolution;
+            yaml_emitter << YAML::Key << "origin" << YAML::Value 
+                        << YAML::Flow << YAML::BeginSeq
+                        << map_data.info.origin.position.x
+                        << map_data.info.origin.position.y
+                        << map_data.info.origin.position.z 
+                        << YAML::EndSeq;
+            yaml_emitter << YAML::Key << "negate" << YAML::Value << 0;
+            yaml_emitter << YAML::Key << "occupied_thresh" << YAML::Value << 0.65;
+            yaml_emitter << YAML::Key << "free_thresh" << YAML::Value << 0.25;
+            yaml_emitter << YAML::EndMap;
+
+            std::ofstream yaml_file(yaml_path);
+            if (!yaml_file.is_open()) {
+                throw std::runtime_error("Failed to open YAML file for writing: " + yaml_path);
+            }
+            yaml_file << yaml_emitter.c_str();
+        } catch (const YAML::Exception& e) {
+            throw std::runtime_error("YAML processing error: " + std::string(e.what()));
+        } catch (const std::exception& e) {
+            throw std::runtime_error("Error saving YAML file: " + std::string(e.what()));
+        }
+        
+    }
 };
 
 int main(int argc, char **argv) {

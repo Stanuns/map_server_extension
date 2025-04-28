@@ -34,6 +34,10 @@ public:
         }
 
         auto response = result.get();
+        if (response->err_code != 200) {
+            RCLCPP_ERROR(get_logger(), "Error: %s", response->err_msg.c_str());
+            return false;
+        }
         // Save PGM file
         bool r1 = save_pgm(map_name, response->map_data);
         // Save YAML file
