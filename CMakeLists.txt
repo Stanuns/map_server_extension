@@ -11,6 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(nav2_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(robot_interfaces REQUIRED)
 find_package(slam_toolbox REQUIRED)
 find_package(std_srvs REQUIRED)
@@ -45,6 +46,7 @@ ament_target_dependencies(map_mgmt_server
   rclcpp_components
   nav2_msgs
   std_srvs
+  nav_msgs
 )
 target_link_libraries(map_mgmt_server
   ${YAML_CPP_LIBRARIES}
@@ -58,6 +60,9 @@ ament_target_dependencies(get_map_file_client_test
   rclcpp_components
   nav2_msgs
   std_srvs
+)
+target_link_libraries(get_map_file_client_test
+  ${YAML_CPP_LIBRARIES}
 )
 
 add_executable(update_map_file_client_test src/update_map_file_client_test.cpp)

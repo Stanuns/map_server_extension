@@ -9,17 +9,19 @@
 #include <stdexcept>
 #include <yaml-cpp/yaml.h>
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include "robot_interfaces/srv/get_maps_name_list.hpp"
-#include "robot_interfaces/srv/remove_map_file.hpp"
-#include "robot_interfaces/srv/get_map_file.hpp"
-#include "robot_interfaces/srv/update_map_file.hpp"
-#include "robot_interfaces/srv/set_current_map.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "robot_interfaces/srv/map_server.hpp"
+#include "robot_interfaces/srv/save_map.hpp"
+
+
 
 /***
- * 1.获取当前maps目录下各个map name列表
- * 2.传入地图名称，获取地图文件pgm、yaml文件
- * 3.下发(载入)地图文件
- * 4.删除地图
+ *              1.获取当前maps目录下各个map name列表
+ *              2.传入地图名称，获取地图文件pgm、yaml文件
+ * /map_server  3.设置当前地图
+ *              4.更新地图文件
+ *              5.删除地图
+ * /save_map    6.保存地图
  */
 using namespace std;
 class MapMgmtServer : public rclcpp::Node {
@@ -30,34 +32,43 @@ public:
         params_dir = package_share_directory + "/params/";
 
 
-        service_gmnl_ = this->create_service<robot_interfaces::srv::GetMapsNameList>(
-            "get_maps_name_list",
-            std::bind(&MapMgmtServer::handle_request_gmnl, this, std::placeholders::_1, std::placeholders::_2));
-
-        service_rmf_ = this->create_service<robot_interfaces::srv::RemoveMapFile>(
-            "remove_map_file",
-            std::bind(&MapMgmtServer::handle_request_rmf, this, std::placeholders::_1, std::placeholders::_2));
+        service_ms_ = this->create_service<robot_interfaces::srv::MapServer>(
+            "/map_server",
+            std::bind(&MapMgmtServer::handle_request_ms, this, std::placeholders::_1, std::placeholders::_2));
         
-        service_gmf_ = this->create_service<robot_interfaces::srv::GetMapFile>(
-            "get_map_file",
-            std::bind(&MapMgmtServer::handle_request_gmf, this, std::placeholders::_1, std::placeholders::_2));
-        
-        service_umf_ = this->create_service<robot_interfaces::srv::UpdateMapFile>(
-            "update_map_file",
-            std::bind(&MapMgmtServer::handle_request_umf, this, std::placeholders::_1, std::placeholders::_2));
-        
-        service_scm_ = this->create_service<robot_interfaces::srv::SetCurrentMap>(
-            "set_current_map",
-            std::bind(&MapMgmtServer::handle_request_scm, this, std::placeholders::_1, std::placeholders::_2));
+        service_sm_ = this->create_service<robot_interfaces::srv::SaveMap>(
+            "/save_map",
+            std::bind(&MapMgmtServer::handle_request_sm, this, std::placeholders::_1, std::placeholders::_2));
 
         RCLCPP_INFO(this->get_logger(), "Service is ready to map management.");
     }
 
 private:
-    void handle_request_gmnl(
-        const std::shared_ptr<robot_interfaces::srv::GetMapsNameList::Request> request,
-        std::shared_ptr<robot_interfaces::srv::GetMapsNameList::Response> response) {
-        (void)request;  // Unused
+    void handle_request_ms(
+        const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
+        std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
+            uint32_t cmd = request->cmd_name;
+
+            if (cmd == 1){ //get maps name list
+                handle_request_gmnl(request, response);
+            }else if(cmd == 2){//get map file
+                handle_request_gmf(request, response);
+            }else if(cmd == 3){//set current map
+                handle_request_scm(request, response);
+            }else if(cmd == 4){//update map file
+
+            }else if(cmd == 5){//remove map file
+                handle_request_rmf(request, response);
+            }else{
+
+            }
+            
+            
+        }
+
+    void handle_request_gmnl( //get maps name list
+        const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
+        std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
 
         std::set<std::string> pgm_files;
         std::set<std::string> yaml_files;
@@ -66,8 +77,8 @@ private:
         // Read directory
         DIR *dir = opendir(maps_dir.c_str());
         if (dir == nullptr) {
-            response->result = false;
-            response->message = "Failed to open maps directory.";
+            response->err_code = 500;
+            response->err_msg = "Failed to open maps directory.";
             RCLCPP_ERROR(this->get_logger(), "Directory not found: %s", maps_dir.c_str());
             return;
         }
@@ -100,16 +111,17 @@ private:
         }
 
         // Prepare response
-        response->result = true;
-        response->name_list = "";
-        for (const auto &name : valid_map_names) {
-            response->name_list += name + ";";
-        }
+        response->err_code = 200;
+        response->err_msg = "Successfully get maps name list";
+        // for (const auto &name : valid_map_names) {
+        //     response->map_list.push_back(name);
+        // }
+        response->map_list = valid_map_names;
     }
 
     void handle_request_rmf(
-        const std::shared_ptr<robot_interfaces::srv::RemoveMapFile::Request> request,
-        std::shared_ptr<robot_interfaces::srv::RemoveMapFile::Response> response) {
+        const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
+        std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
 
         std::string map_name = request->map_name;
         
@@ -118,87 +130,134 @@ private:
         std::string yaml_path = maps_dir + map_name + ".yaml";
         // Delete PGM file
         if (std::remove(pgm_path.c_str()) != 0) {
-            response->result = false;
-            response->message = "Failed to delete PGM file: " + map_name + ".pgm";
+            response->err_code = 500;
+            response->err_msg = "Failed to delete PGM file: " + map_name + ".pgm";
             return;
         }
         // Delete YAML file
         if (std::remove(yaml_path.c_str()) != 0) {
-            response->result = false;
-            response->message = "Failed to delete YAML file: " + map_name + ".yaml";
+            response->err_code = 500;
+            response->err_msg = "Failed to delete YAML file: " + map_name + ".yaml";
             return;
         }
-        response->result = true;
-        response->message = "Successfully deleted map files: " + map_name + ".pgm and " + map_name + ".yaml";
+        response->err_code = 200;
+        response->err_msg = "Successfully deleted map files: " + map_name + ".pgm and " + map_name + ".yaml";
     }
 
     void handle_request_gmf(
-        const std::shared_ptr<robot_interfaces::srv::GetMapFile::Request> request,
-        std::shared_ptr<robot_interfaces::srv::GetMapFile::Response> response) {
+        const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
+        std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
 
         std::string map_name = request->map_name;
-        // Read YAML file
         std::string yaml_path = maps_dir + map_name + ".yaml";
-        if (!readFile(yaml_path, response->yaml_content)) {
-            response->result = false;
-            response->message = "Failed to read YAML file: " + yaml_path;
-            return;
-        }
-        // Read PGM file
         std::string pgm_path = maps_dir + map_name + ".pgm";
-        if (!readFile(pgm_path, response->pgm_content)) {
-            response->result = false;
-            response->message = "Failed to read PGM file: " + pgm_path;
-            return;
-        }
-        response->result = true;
-        response->message = "Successfully retrieved map files: " + map_name;          
-    }
 
-    void handle_request_umf(
-        const std::shared_ptr<robot_interfaces::srv::UpdateMapFile::Request> request,
-        std::shared_ptr<robot_interfaces::srv::UpdateMapFile::Response> response) {
-                  
-        std::string yaml_path = maps_dir + request->map_name + ".yaml";
-        std::string pgm_path = maps_dir + request->map_name + ".pgm";
         try {
-            // Save YAML file
-            std::ofstream yaml_file(yaml_path, std::ios::binary);
-            if (!yaml_file.is_open()) {
-                throw std::runtime_error("Failed to open YAML file for writing");
-            }
-            yaml_file.write(reinterpret_cast<const char*>(request->yaml_content.data()), 
-                          request->yaml_content.size());
-            yaml_file.close();
+            // Read YAML file
+            YAML::Node yaml_node = YAML::LoadFile(yaml_path);
+            response->map_data.info.resolution = yaml_node["resolution"].as<float>();
+            response->map_data.info.origin.position.x = yaml_node["origin"][0].as<float>();
+            response->map_data.info.origin.position.y = yaml_node["origin"][1].as<float>();
+            response->map_data.info.origin.position.z = yaml_node["origin"][2].as<float>();
+            response->map_data.info.origin.orientation.w = 1.0; // Default orientation
 
-            // Save PGM file
-            std::ofstream pgm_file(pgm_path, std::ios::binary);
+            // Read PGM file 
+            std::ifstream pgm_file(pgm_path, std::ios::binary);
             if (!pgm_file.is_open()) {
-                throw std::runtime_error("Failed to open PGM file for writing");
+                response->err_code = 500;
+                response->err_msg = "Failed to open PGM file: " + pgm_path;
+                return;
             }
-            pgm_file.write(reinterpret_cast<const char*>(request->pgm_content.data()), 
-                         request->pgm_content.size());
-            pgm_file.close();
 
-            // Set success response
-            response->result = true;
-            response->err_code = "200";
-            response->err_msg = "Map file updated successfully";
+            // Parse PGM header (P5 format)
+            std::string magic_number;
+            std::getline(pgm_file, magic_number); // Read "P5"
+            if (magic_number != "P5") {
+                response->err_code = 500;
+                response->err_msg = "Invalid PGM format (not P5): " + pgm_path;
+                return;
+            }
+            // Skip comments and read width/height
+            std::string line;
+            while (std::getline(pgm_file, line)) {
+                if (line.empty() || line[0] == '#') continue;
+                break;
+            }
+            std::istringstream dimensions_stream(line);
+            int width, height;
+            dimensions_stream >> width >> height;
+            // Read max_val and skip to binary data
+            std::getline(pgm_file, line); // Read max_val line
+            pgm_file.ignore(); // Skip newline after max_val
+
+            response->map_data.info.width = width;
+            response->map_data.info.height = height;
+
+            // Read PGM data into occupancy grid
+            response->map_data.data.resize(width * height);
+            for (int i = 0; i < width * height; ++i) {
+                uint8_t pixel;
+                pgm_file.read(reinterpret_cast<char*>(&pixel), sizeof(pixel));
+                response->map_data.data[i] = (pixel == 0) ? 100 : (pixel == 254) ? 0 : -1; // Convert to occupancy values
+            }
+
+            response->err_code = 200;
+            response->err_msg = "Successfully retrieved map: " + map_name;
+
+        } catch (const YAML::Exception& e) {
+            response->err_code = 500;
+            response->err_msg = "YAML parsing error: " + std::string(e.what());
         } catch (const std::exception& e) {
-            // Set error response
-            response->result = false;
-            response->err_code = "500";
-            response->err_msg = "Failed to update map file: " + std::string(e.what());
-            
-            // Clean up partially written files if any
-            filesystem::remove(yaml_path);
-            filesystem::remove(pgm_path);
+            response->err_code = 500;
+            response->err_msg = "Error reading map files: " + std::string(e.what());
         }
+           
     }
 
-    void handle_request_scm(
-        const std::shared_ptr<robot_interfaces::srv::SetCurrentMap::Request> request,
-        std::shared_ptr<robot_interfaces::srv::SetCurrentMap::Response> response) {
+    // void handle_request_umf(
+    //     const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
+    //     std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
+                  
+    //     std::string yaml_path = maps_dir + request->map_name + ".yaml";
+    //     std::string pgm_path = maps_dir + request->map_name + ".pgm";
+    //     try {
+    //         // Save YAML file
+    //         std::ofstream yaml_file(yaml_path, std::ios::binary);
+    //         if (!yaml_file.is_open()) {
+    //             throw std::runtime_error("Failed to open YAML file for writing");
+    //         }
+    //         yaml_file.write(reinterpret_cast<const char*>(request->yaml_content.data()), 
+    //                       request->yaml_content.size());
+    //         yaml_file.close();
+
+    //         // Save PGM file
+    //         std::ofstream pgm_file(pgm_path, std::ios::binary);
+    //         if (!pgm_file.is_open()) {
+    //             throw std::runtime_error("Failed to open PGM file for writing");
+    //         }
+    //         pgm_file.write(reinterpret_cast<const char*>(request->pgm_content.data()), 
+    //                      request->pgm_content.size());
+    //         pgm_file.close();
+
+    //         // Set success response
+    //         response->result = true;
+    //         response->err_code = "200";
+    //         response->err_msg = "Map file updated successfully";
+    //     } catch (const std::exception& e) {
+    //         // Set error response
+    //         response->result = false;
+    //         response->err_code = "500";
+    //         response->err_msg = "Failed to update map file: " + std::string(e.what());
+            
+    //         // Clean up partially written files if any
+    //         filesystem::remove(yaml_path);
+    //         filesystem::remove(pgm_path);
+    //     }
+    // }
+
+    void handle_request_scm( //set current map
+        const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
+        std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
                   
         try {
             // Load the existing YAML file
@@ -212,16 +271,21 @@ private:
             fout << config;
             fout.close();
             
-            response->result = true;
-            response->err_code = "200";
+            response->err_code = 200;
             response->err_msg = "Successfully set current_map_name to " + request->map_name;
         } catch (const std::exception& e) {
-            response->result = false;
-            response->err_code = "500";
+            response->err_code = 500;
             response->err_msg = "Failed to set map_mgmt.yaml: " + std::string(e.what());
         }
     
     }
+
+    void handle_request_sm(
+        const std::shared_ptr<robot_interfaces::srv::SaveMap::Request> request,
+        std::shared_ptr<robot_interfaces::srv::SaveMap::Response> response) {
+
+            ;
+        }
 
     bool readFile(const std::string& path, std::vector<uint8_t>& content) {
         std::ifstream file(path, std::ios::binary);
@@ -234,12 +298,8 @@ private:
         return !file.fail();
     }
 
-    // rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr service_;
-    rclcpp::Service<robot_interfaces::srv::GetMapsNameList>::SharedPtr service_gmnl_;
-    rclcpp::Service<robot_interfaces::srv::RemoveMapFile>::SharedPtr service_rmf_;
-    rclcpp::Service<robot_interfaces::srv::GetMapFile>::SharedPtr service_gmf_;
-    rclcpp::Service<robot_interfaces::srv::UpdateMapFile>::SharedPtr service_umf_;
-    rclcpp::Service<robot_interfaces::srv::SetCurrentMap>::SharedPtr service_scm_;
+    rclcpp::Service<robot_interfaces::srv::MapServer>::SharedPtr service_ms_;
+    rclcpp::Service<robot_interfaces::srv::SaveMap>::SharedPtr service_sm_;
     std::string maps_dir;
     std::string params_dir;
 };
