@@ -12,6 +12,7 @@
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "robot_interfaces/srv/map_server.hpp"
 #include "robot_interfaces/srv/save_map.hpp"
+#include "nav2_msgs/srv/save_map.hpp"
 
 
 
@@ -263,9 +264,40 @@ private:
     void handle_request_sm(
         const std::shared_ptr<robot_interfaces::srv::SaveMap::Request> request,
         std::shared_ptr<robot_interfaces::srv::SaveMap::Response> response) {
+            
 
-            ;
-        }
+            string map_name = request->map_name;
+
+            //Need to launch : ros2 launch nav2_map_server map_saver_server.launch.py
+            //creat a service client to call navigation2 nav2_map_server
+            auto client_node = std::make_shared<rclcpp::Node>("temp_map_saver_client");
+            rclcpp::Client<nav2_msgs::srv::SaveMap>::SharedPtr map_saver_client =
+                client_node->create_client<nav2_msgs::srv::SaveMap>("/map_saver/save_map");
+            auto save_map_request = std::make_shared<nav2_msgs::srv::SaveMap::Request>();
+            while (!map_saver_client->wait_for_service(2s)) {
+                if (!rclcpp::ok()) {
+                  RCLCPP_ERROR(get_logger(), "Interrupted while waiting for the SaveMap service. Exiting.");
+                  return;
+                }
+                RCLCPP_INFO(get_logger(), "SaveMap service not available, waiting again...");
+            }
+            save_map_request->map_topic = "/map";
+            save_map_request->map_url = maps_dir + map_name;
+            auto map_saver_result = map_saver_client->async_send_request(save_map_request);
+            // Wait for the result.
+            if (rclcpp::spin_until_future_complete(client_node, map_saver_result) ==
+                rclcpp::FutureReturnCode::SUCCESS)
+            {
+                response->result = true;
+                response->message = "Save map Successfully";
+                RCLCPP_INFO(get_logger(), "Save map Successfully");
+            } else {
+                response->result = false;
+                response->message = "Failed to save map";
+                RCLCPP_ERROR(get_logger(), "Failed to save map");
+            }
+
+    }
 
     bool readFile(const std::string& path, std::vector<uint8_t>& content) {
         std::ifstream file(path, std::ios::binary);
