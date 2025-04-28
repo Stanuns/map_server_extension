@@ -289,7 +289,7 @@ private:
                 rclcpp::FutureReturnCode::SUCCESS)
             {
                 response->result = true;
-                response->message = "Save map Successfully";
+                response->message = "Successfully saved map, map name: " + map_name;
                 RCLCPP_INFO(get_logger(), "Save map Successfully");
             } else {
                 response->result = false;
