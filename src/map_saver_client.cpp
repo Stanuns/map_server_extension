@@ -105,7 +105,12 @@ int main(int argc, char **argv)
   if (rclcpp::spin_until_future_complete(map_saver_node, map_saver_result) ==
     rclcpp::FutureReturnCode::SUCCESS)
   {
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Save map Successfully");
+    auto response = map_saver_result.get();
+    if (response->result) {
+      RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Save map Successfully");
+    } else {
+      RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to save map: Server returned an error.");
+    }
   } else {
     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to save map");
   }

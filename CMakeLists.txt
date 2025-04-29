@@ -83,7 +83,7 @@ install(TARGETS map_saver_client map_mgmt_server get_map_file_client_test update
     DESTINATION lib/${PROJECT_NAME}
 )
 install(
-        DIRECTORY  maps params
+        DIRECTORY  maps params launch
         DESTINATION share/${PROJECT_NAME}
 )
 

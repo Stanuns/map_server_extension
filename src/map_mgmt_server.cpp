@@ -288,9 +288,17 @@ private:
             if (rclcpp::spin_until_future_complete(client_node, map_saver_result) ==
                 rclcpp::FutureReturnCode::SUCCESS)
             {
-                response->result = true;
-                response->message = "Successfully saved map, map name: " + map_name;
-                RCLCPP_INFO(get_logger(), "Save map Successfully");
+                auto map_saver_response = map_saver_result.get();
+                if (map_saver_response->result) {
+                    response->result = true;
+                    response->message = "Successfully saved map, map name: " + map_name;
+                    RCLCPP_INFO(get_logger(), "Save map Successfully");
+                  } else {
+                    response->result = false;
+                    response->message = "Failed to save map: Service Server /map_saver/save_map returned an error";
+                    RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to save map: Service Server /map_saver/save_map returned an error.");
+                  }
+                
             } else {
                 response->result = false;
                 response->message = "Failed to save map";
