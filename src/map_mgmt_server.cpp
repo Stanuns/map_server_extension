@@ -34,7 +34,7 @@ public:
 
 
         service_ms_ = this->create_service<robot_interfaces::srv::MapServer>(
-            "/map_server",
+            "/service_map",
             std::bind(&MapMgmtServer::handle_request_ms, this, std::placeholders::_1, std::placeholders::_2));
         
         service_sm_ = this->create_service<robot_interfaces::srv::SaveMap>(
@@ -70,6 +70,8 @@ private:
     void handle_request_gmnl( //get maps name list
         const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
         std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
+
+        RCLCPP_INFO(this->get_logger(), "start to get map name list");
 
         std::set<std::string> pgm_files;
         std::set<std::string> yaml_files;
@@ -124,6 +126,8 @@ private:
         const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
         std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
 
+        RCLCPP_INFO(this->get_logger(), "start to remove map file");
+
         std::string map_name = request->map_name;
         
         // Construct file paths
@@ -148,6 +152,8 @@ private:
     void handle_request_gmf(
         const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
         std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
+
+        RCLCPP_INFO(this->get_logger(), "start to get map file");
 
         std::string map_name = request->map_name;
         std::string yaml_path = maps_dir + map_name + ".yaml";
@@ -216,6 +222,8 @@ private:
     void handle_request_umf(
         const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
         std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
+  
+        RCLCPP_INFO(this->get_logger(), "start to update map file");
                   
         string map_name = request->map_name;
         
@@ -239,6 +247,8 @@ private:
     void handle_request_scm( //set current map
         const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
         std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
+
+        RCLCPP_INFO(this->get_logger(), "start to set current map");
                   
         try {
             // Load the existing YAML file

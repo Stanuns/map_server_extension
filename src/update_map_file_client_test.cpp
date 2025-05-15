@@ -8,7 +8,7 @@
 class UpdateMapFileClientTest : public rclcpp::Node {
 public:
     UpdateMapFileClientTest() : Node("update_map_file_client_test") {
-        client_ = this->create_client<robot_interfaces::srv::MapServer>("map_server");
+        client_ = this->create_client<robot_interfaces::srv::MapServer>("service_map");
         read_dir = ament_index_cpp::get_package_share_directory("map_server_extension");
     }
 
