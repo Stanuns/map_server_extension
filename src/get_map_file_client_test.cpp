@@ -34,7 +34,7 @@ public:
         }
 
         auto response = result.get();
-        if (response->err_code != 200) {
+        if (response->err_code != 0x00) {
             RCLCPP_ERROR(get_logger(), "Error: %s", response->err_msg.c_str());
             return false;
         }

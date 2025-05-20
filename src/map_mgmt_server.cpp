@@ -114,7 +114,7 @@ private:
         }
 
         // Prepare response
-        response->err_code = 200;
+        response->err_code = 0x00;
         response->err_msg = "Successfully get maps name list";
         // for (const auto &name : valid_map_names) {
         //     response->map_list.push_back(name);
@@ -145,7 +145,7 @@ private:
             response->err_msg = "Failed to delete YAML file: " + map_name + ".yaml";
             return;
         }
-        response->err_code = 200;
+        response->err_code = 0x00;
         response->err_msg = "Successfully deleted map files: " + map_name + ".pgm and " + map_name + ".yaml";
     }
 
@@ -206,7 +206,7 @@ private:
                 response->map_data.data[i] = (pixel == 0) ? 100 : (pixel == 254) ? 0 : -1; // Convert to occupancy values
             }
 
-            response->err_code = 200;
+            response->err_code = 0x00;
             response->err_msg = "Successfully retrieved map: " + map_name;
 
         } catch (const YAML::Exception& e) {
@@ -234,7 +234,7 @@ private:
             save_yaml(map_name, request->map_data);
 
             // Set success response
-            response->err_code = 200;
+            response->err_code = 0x00;
             response->err_msg = "Map file updated successfully";
         } catch (const std::exception& e) {
             // Set error response
@@ -262,7 +262,7 @@ private:
             fout << config;
             fout.close();
             
-            response->err_code = 200;
+            response->err_code = 0x00;
             response->err_msg = "Successfully set current_map_name to " + request->map_name;
         } catch (const std::exception& e) {
             response->err_code = 500;

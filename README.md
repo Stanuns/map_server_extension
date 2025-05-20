@@ -83,7 +83,7 @@ ros2 launch map_server_extension map_mgmt_server.launch.py
   map_data: ''
 - 调用失败返回参数
   result: False
-  err_code: '500'
+  err_code: 500
   err_msg: 'Failed to update map file: ...'
 
 ### 5 删除地图
