@@ -16,6 +16,7 @@ find_package(robot_interfaces REQUIRED)
 # find_package(slam_toolbox REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(lifecycle_msgs REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -78,8 +79,20 @@ target_link_libraries(update_map_file_client_test
   ${YAML_CPP_LIBRARIES}
 )
 
+add_executable(mapping_monitor src/mapping_monitor.cpp)
+ament_target_dependencies(mapping_monitor
+  robot_interfaces
+  rclcpp
+  rclcpp_action
+  rclcpp_components
+  nav2_msgs
+  std_srvs
+  nav_msgs
+  lifecycle_msgs
+)
 
-install(TARGETS map_saver_client map_mgmt_server get_map_file_client_test update_map_file_client_test
+
+install(TARGETS map_saver_client map_mgmt_server get_map_file_client_test update_map_file_client_test mapping_monitor
     DESTINATION lib/${PROJECT_NAME}
 )
 install(

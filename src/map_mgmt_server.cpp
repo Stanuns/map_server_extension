@@ -17,6 +17,7 @@
 
 
 /***
+ *              0.获取当前地图名称
  *              1.获取当前maps目录下各个map name列表
  *              2.传入地图名称，获取地图文件pgm、yaml文件
  * /map_server  3.设置当前地图
@@ -50,7 +51,9 @@ private:
         std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
             uint32_t cmd = request->cmd_name;
 
-            if (cmd == 1){ //get maps name list
+            if(cmd == 0){ //set current map
+                handle_request_gcm(request, response);
+            }else if (cmd == 1){ //get maps name list 
                 handle_request_gmnl(request, response);
             }else if(cmd == 2){//get map file
                 handle_request_gmf(request, response);
@@ -63,9 +66,35 @@ private:
             }else{
 
             }
+        
+    }
+
+    void handle_request_gcm( //get maps name list
+        const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
+        std::shared_ptr<robot_interfaces::srv::MapServer::Response> response) {
+
+        RCLCPP_INFO(this->get_logger(), "start to get current map name");
+                
+        try {
+            // Load the YAML file
+            YAML::Node config = YAML::LoadFile(params_dir + "map_mgmt.yaml");
             
+            // Get the current_map_name value
+            std::string current_map = config["map_mgmt_server"]["ros__parameters"]["current_map_name"].as<std::string>();
             
+            // Set response
+            response->err_code = 0x00;
+            response->err_msg = "Successfully retrieved current map name";
+            response->map_list.push_back(current_map);
+        } catch (const YAML::Exception& e) {
+            response->err_code = 500;
+            response->err_msg = "YAML parsing error: " + std::string(e.what());
+        } catch (const std::exception& e) {
+            response->err_code = 500;
+            response->err_msg = "Error reading map_mgmt.yaml: " + std::string(e.what());
         }
+
+    }
 
     void handle_request_gmnl( //get maps name list
         const std::shared_ptr<robot_interfaces::srv::MapServer::Request> request,
@@ -291,7 +320,7 @@ private:
                 }
                 RCLCPP_INFO(get_logger(), "SaveMap service not available, waiting again...");
             }
-            save_map_request->map_topic = "/map";
+            save_map_request->map_topic = "/live_map";
             save_map_request->map_url = maps_dir + map_name;
             auto map_saver_result = map_saver_client->async_send_request(save_map_request);
             // Wait for the result.

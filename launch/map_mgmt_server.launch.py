@@ -25,5 +25,11 @@ def generate_launch_description():
             executable='map_mgmt_server', 
             name='map_mgmt_server_extension',
             parameters=[{'use_sim_time':use_sim_time}]
+        ),
+        Node(
+            package='map_server_extension', 
+            executable='mapping_monitor', 
+            name='mapping_monitor',
+            parameters=[{'use_sim_time':use_sim_time}]
         )
     ])
