@@ -1,0 +1,4 @@
+map_saver_cli:
+  ros__parameters:
+    map_subscribe_transient_local: false
+    save_map_timeout: 10000  # adjust as needed
