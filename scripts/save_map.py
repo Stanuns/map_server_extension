@@ -71,6 +71,9 @@ class MapSaver(Node):
             
             pgm_data = pgm_data.astype(np.uint8)
             
+            # 修复镜像问题：将图像上下翻转以匹配原始方向
+            pgm_data = np.flipud(pgm_data)
+            
             # 使用 PIL 保存图像
             img = Image.fromarray(pgm_data, mode='L')
             img.save(filename + '.pgm')
